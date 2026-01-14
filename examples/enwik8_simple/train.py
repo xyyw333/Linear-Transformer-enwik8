@@ -2,6 +2,7 @@ from linear_attention_transformer import LinearAttentionTransformerLM
 from linear_attention_transformer.autoregressive_wrapper import AutoregressiveWrapper
 from product_key_memory import fetch_optimizer_parameters
 
+import os
 import random
 import tqdm
 import gzip
@@ -10,18 +11,19 @@ import torch
 import torch.optim as optim
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset
+import math
+from torch.optim.lr_scheduler import LambdaLR
 
 # constants
 
-NUM_BATCHES = int(1e5)
+NUM_BATCHES = int(3000)
 BATCH_SIZE = 4
 GRADIENT_ACCUMULATE_EVERY = 4
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 2e-5
 VALIDATE_EVERY  = 100
 GENERATE_EVERY  = 500
 GENERATE_LENGTH = 512
 SEQ_LEN = 4096
-
 # helpers
 
 def cycle(loader):
@@ -35,6 +37,17 @@ def decode_token(token):
 def decode_tokens(tokens):
     return ''.join(list(map(decode_token, tokens)))
 
+#Warmup + cosine 
+def get_cosine_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps, num_cycles=0.5):
+    def lr_lambda(current_step):
+        # 1. Warmup 阶段
+        if current_step < num_warmup_steps:
+            return float(current_step) / float(max(1, num_warmup_steps))
+        # 2. Cosine Decay 阶段
+        progress = float(current_step - num_warmup_steps) / float(max(1, num_training_steps - num_warmup_steps))
+        return max(0.0, 0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress)))
+
+    return LambdaLR(optimizer, lr_lambda)
 # instantiate model
 
 model = LinearAttentionTransformerLM(
@@ -111,3 +124,17 @@ for i in tqdm.tqdm(range(NUM_BATCHES), mininterval=10., desc='training'):
         sample = model.generate(inp, GENERATE_LENGTH)
         output_str = decode_tokens(sample)
         print(output_str)
+
+        checkpoint_path = os.path.expanduser("~/linear-attention-transformer/improved_model.pt")
+
+        
+        os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
+
+        # 保存模型权重
+        torch.save(model.state_dict(), checkpoint_path)
+
+        # 验证保存是否成功
+        if os.path.exists(checkpoint_path):
+            print(f"模型已成功保存到：{checkpoint_path}")
+        else:
+            print("模型保存失败，请检查路径权限！")

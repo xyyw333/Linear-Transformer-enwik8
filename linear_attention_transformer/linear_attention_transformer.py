@@ -213,6 +213,10 @@ def linear_attn(q, k, v, kv_mask = None):
 
     q = q.softmax(dim=-1)
     k = k.softmax(dim=-2)
+    
+    #使用sigmoid激活生成一个0-1的门控，过滤掉非关键的KV信息
+    gate = torch.sigmoid(k)
+    k = k*gate
 
     q = q * dim ** -0.5
 
@@ -284,6 +288,11 @@ class SelfAttention(nn.Module):
         self.to_out = nn.Linear(d_heads * heads, dim)
         self.dropout = nn.Dropout(dropout)
 
+        inner_dim = d_heads * heads
+        self.local_conv = nn.Conv1d(
+                inner_dim, inner_dim,
+                kernel_size = 3, padding = 1,groups = inner_dim
+        )
     def forward(self, x, input_mask = None, context = None, context_mask = None, pos_emb = None, **kwargs):
         assert not (self.receives_context and not exists(context)), 'context must be supplied if self attention is in receives context mode'
 
@@ -294,9 +303,15 @@ class SelfAttention(nn.Module):
 
         b, t, e, h, dh = *q.shape, self.heads, self.d_heads
 
-        merge_heads = lambda x: x.reshape(*x.shape[:2], -1, dh).transpose(1, 2)
+        merge_heads = lambda x: x.reshape(b ,t , h, dh).transpose(1, 2)
 
         q, k, v = map(merge_heads, (q, k, v))
+
+        #卷积层
+    
+        v_merged = rearrange(v, 'b h n d -> b (h d) n', h=self.heads, d=self.d_heads)
+        v_conv =self.local_conv(v_merged)
+        v=rearrange(v_conv, 'b (h d) n -> b h n d', h=self.heads, d=self.d_heads)
 
         if exists(pos_emb) and not self.receives_context:
             q, k = apply_rotory_pos_emb(q, k, pos_emb)
