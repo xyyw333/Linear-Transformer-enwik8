@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+*.pt
+*.pth
+*.ckpt
+improved_model.pt
