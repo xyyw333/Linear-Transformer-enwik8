@@ -36,11 +36,11 @@ for idx, log_path in enumerate(log_files):
             continue
         
         # 绘制原始 loss 曲线
-        # plt.plot(losses, 
-        #          label=plot_styles[idx]['label'], 
-        #          color=plot_styles[idx]['color'], 
-        #          alpha=0.5,  # 原始曲线透明度调低，避免重叠看不清
-        #          linewidth=1)
+        plt.plot(losses, 
+                 label=plot_styles[idx]['label'], 
+                 color=plot_styles[idx]['color'], 
+                 alpha=0.5,  # 原始曲线透明度调低，避免重叠看不清
+                 linewidth=1)
         
         # 对数据量多的文件做平滑处理（移动平均）
         if len(losses) > 100:

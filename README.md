@@ -1,16 +1,13 @@
-## Linear Attention Transformer
-
+## Linear Attention Transformer (Improved Version)
 <img src="./linear-attention.png" width="700px" />
+本项目是一个全功能的 Transformer 框架，核心特点是融合了局部注意力 (QK^T)V 与全局线性注意力 $Q(K^Tv)$。通过数学变换，将标准自注意力的复杂度从 $O(N^2)$ 降低至线性水平 $O(N)$，特别适用于长序列语言建模任务（如蛋白质序列分析、超长文档处理等）。
+主要特性线性复杂度：全局注意力计算不再随序列长度呈平方增长，显存占用极大优化。
+自主改进 - 门控机制 (Gate Control)：在 linear_attn 中引入 sigmoid 门控逻辑，动态过滤非关键信息，增强记忆管理能力 。
+自主改进 - 局部卷积增强 (Local Conv)：在注意力层中集成 $3 \times 1$ 卷积，利用局部归纳偏置补偿线性注意力在捕捉临近语义时的不足 。
+可逆网络 (Reversible Layers)：集成可逆序列技术，进一步节省深度模型训练时的激活内存占用。
+兼容性：支持因果掩码（Causal Masking）、Token Shifting（单位置偏移）以加速收敛 。
 
-[![PyPI version](https://badge.fury.io/py/linear-attention-transformer.svg)](https://badge.fury.io/py/linear-attention-transformer)
-
-A fully featured Transformer that mixes (QKᵀ)V local attention with Q(KᵀV) global attention (scales linearly with respect to sequence length) for efficient long-range language modeling.
-
-## Install
-
-```bash
-$ pip install linear-attention-transformer
-```
+实验探究本项目在 enwik8 数据集上进行了对比实验（详见 convergence_comparison.png）：Baseline: 标准线性注意力。Conv_Only: 引入局部卷积增强的版本 8。Full_Improved: 同时启用门控机制与卷积增强的版本，实验表明该版本在长序列建模的 BPC 指标上表现更优。
 
 ## Usage
 
